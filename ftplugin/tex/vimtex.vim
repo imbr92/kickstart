@@ -42,7 +42,21 @@ let g:vimtex_delim_toggle_mod_list = [
   \]
 
 " Don't open quickfix for warning messages if no errors are present
-let g:vimtex_quickfix_open_on_warning = 0  
+let g:vimtex_quickfix_open_on_warning = 0
+
+" Set _ (default from -pdf to -lualatex to use lualatex? Maybe hacky
+let g:vimtex_compiler_latexmk_engines = {
+  \ '_'                : '-lualatex',
+  \ 'pdfdvi'           : '-pdfdvi',
+  \ 'pdfps'            : '-pdfps',
+  \ 'pdflatex'         : '-pdf',
+  \ 'luatex'           : '-lualatex',
+  \ 'lualatex'         : '-lualatex',
+  \ 'xelatex'          : '-xelatex',
+  \ 'context (pdftex)' : '-pdf -pdflatex=texexec',
+  \ 'context (luatex)' : '-pdf -pdflatex=context',
+  \ 'context (xetex)'  : '-pdf -pdflatex=''texexec --xtx''',
+\}
 
 " Disable some compilation warning messages
 let g:vimtex_quickfix_ignore_filters = [
