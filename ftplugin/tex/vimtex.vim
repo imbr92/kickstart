@@ -18,7 +18,7 @@ nmap <leader>t <CMD>VimtexTocToggle<CR>
 " Turn off VimTeX indentation
 let g:vimtex_indent_enabled = 0
 
-" Disable default mappings 
+" Disable default mappings
 let g:vimtex_mappings_enabled = 0
 
 " Disable insert mode mappings (I use UltiSnips)
@@ -29,7 +29,7 @@ let g:vimtex_imaps_enabled = 0
 let g:vimtex_complete_enabled = 1
 
 " Disable syntax conceal
-let g:vimtex_syntax_conceal_disable = 1  
+let g:vimtex_syntax_conceal_disable = 1
 
 " Default is 500 lines and gave me lags on missed key presses
 let g:vimtex_delim_stopline = 5
