@@ -103,7 +103,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -117,8 +117,16 @@ vim.o.showmode = false
 --  See `:help 'clipboard'`
 -- NEW: <leader> y for system clipboard
 vim.opt.clipboard = 'unnamed'
-vim.keymap.set({ 'n', 'v' }, '<leader>y', [["+y]])
-vim.keymap.set('n', '<leader>Y', [["+Y]])
+-- vim.keymap.set({ 'n', 'v' }, '<leader>y', [["+y]])
+-- vim.keymap.set('n', '<leader>Y', [["+Y]])
+-- Yank into local clipboard via OSC52
+-- vim.keymap.set({ 'n', 'v' }, '<leader>y', ':OSCYank<CR>', { silent = true })
+-- Visual: yank selection, then OSC52-copy the unnamed register (")
+vim.keymap.set('v', '<leader>y', 'y:OSCYankRegister "<CR>', { silent = true })
+
+-- Normal: yy current line, then OSC52-copy
+vim.keymap.set('n', '<leader>y', 'yy:OSCYankRegister "<CR>', { silent = true })
+
 -- vim.schedule(function()
 --   vim.opt.clipboard = 'unnamedplus'
 -- end)
@@ -186,6 +194,15 @@ vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+vim.keymap.set('n', '<leader>e', vim.diagnostic.open_float, { desc = 'Show diagnostic [E]rror on current line' })
+vim.keymap.set('n', '<leader>ye', function()
+  local diag = vim.diagnostic.get(0, { lnum = vim.api.nvim_win_get_cursor(0)[1] - 1 })
+  if #diag > 0 then
+    vim.fn.setreg('"', diag[1].message)
+    vim.cmd('OSCYankRegister "')
+    vim.notify('Copied diagnostic to clipboard (OSC52)')
+  end
+end, { desc = 'Copy diagnostic to clipboard' })
 
 -- Exit terminal mode in the builtin terminal with a shortcut that is a bit easier
 -- for people to discover. Otherwise, you normally need to press <C-\><C-n>, which
@@ -644,28 +661,14 @@ require('lazy').setup({
       vim.diagnostic.config {
         severity_sort = true,
         float = { border = 'rounded', source = 'if_many' },
-        underline = { severity = vim.diagnostic.severity.ERROR },
+        underline = { severity = { min = vim.diagnostic.severity.WARN } },
         signs = vim.g.have_nerd_font and {
           text = {
             [vim.diagnostic.severity.ERROR] = '󰅚 ',
             [vim.diagnostic.severity.WARN] = '󰀪 ',
-            [vim.diagnostic.severity.INFO] = '󰋽 ',
-            [vim.diagnostic.severity.HINT] = '󰌶 ',
           },
         } or {},
-        virtual_text = {
-          source = 'if_many',
-          spacing = 2,
-          format = function(diagnostic)
-            local diagnostic_message = {
-              [vim.diagnostic.severity.ERROR] = diagnostic.message,
-              [vim.diagnostic.severity.WARN] = diagnostic.message,
-              [vim.diagnostic.severity.INFO] = diagnostic.message,
-              [vim.diagnostic.severity.HINT] = diagnostic.message,
-            }
-            return diagnostic_message[diagnostic.severity]
-          end,
-        },
+        virtual_text = false,
       }
 
       -- LSP servers and clients are able to communicate to each other what features they support.
@@ -689,7 +692,35 @@ require('lazy').setup({
           -- flags = { '-nocudalibs' },
         },
         -- gopls = {},
-        pyright = {},
+        pyright = {
+          settings = {
+            python = {
+              analysis = {
+                typeCheckingMode = 'basic', -- VSCode-like
+                useLibraryCodeForTypes = true,
+                diagnosticSeverityOverrides = {
+                  -- quiet monkey-patch & symbol export noise
+                  reportAttributeAccessIssue = 'none',
+                  reportUnknownMemberType = 'none',
+                  reportUnknownArgumentType = 'none',
+                  reportUnknownVariableType = 'none',
+                  reportUnknownParameterType = 'none',
+                  reportPrivateImportUsage = 'none',
+                  reportIncompatibleMethodOverride = 'warning',
+                  reportGeneralTypeIssues = 'warning',
+                },
+                ignore = {
+                  -- stop analyzing the CUTLASS typing file that’s spamming errors
+                  '**/site-packages/nvidia_cutlass_dsl/python_packages/cutlass/cute/typing.py',
+                },
+              },
+              -- ensure it uses your venv (adjust if needed)
+              venvPath = vim.fn.getcwd(),
+              venv = 'venv',
+            },
+          },
+        },
+
         rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -912,7 +943,8 @@ require('lazy').setup({
       -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
       -- vim.cmd.colorscheme 'tokyonight-moon'
       -- vim.cmd.colorscheme 'tokyonight-night'
-      vim.cmd.colorscheme 'evening'
+      -- vim.cmd.colorscheme 'evening'
+      vim.cmd.colorscheme 'tokyonight'
 
       -- You can configure highlights by doing something like:
       vim.cmd.hi 'Comment gui=none'
@@ -966,7 +998,7 @@ require('lazy').setup({
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
       ignore_install = { 'org' },
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'cpp', 'latex', 'python' },
+      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'cpp', 'python' },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -985,6 +1017,29 @@ require('lazy').setup({
     --    - Incremental selection: Included, see `:help nvim-treesitter-incremental-selection-mod`
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
+  },
+  {
+
+    'nvim-treesitter/nvim-treesitter-context',
+    opts = {
+      enable = true,
+      max_lines = 3, -- just the current scope line
+      multiline_threshold = 1, -- collapse long signatures
+      mode = 'cursor', -- follow cursor
+      trim_scope = 'outer',
+      zindex = 40,
+      separator = nil, -- e.g. "—" if you want a divider below
+    },
+    -- only need if i don't want this to be default
+    -- keys = {
+    --   {
+    --     '<leader>tc',
+    --     function()
+    --       require('treesitter-context').toggle()
+    --     end,
+    --     desc = 'Toggle TS Context',
+    --   },
+    -- },
   },
 
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
@@ -1006,6 +1061,7 @@ require('lazy').setup({
   require 'custom.plugins.vimtex',
   require 'custom.plugins.orgmode',
   require 'custom.plugins.vim_tmux_navigator',
+  require 'custom.plugins.oscyank',
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
